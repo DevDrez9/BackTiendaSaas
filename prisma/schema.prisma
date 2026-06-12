@@ -1,0 +1,331 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ConfigWeb {
+  id          Int      @id @default(autoincrement())
+  nombreSitio String
+  logoUrl     String?
+  colorPrimario String
+  colorSecundario String
+  whatsapp    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tiendas     Tienda[]
+  banners     ImagenBanner[]
+}
+
+model ImagenBanner {
+  id          Int       @id @default(autoincrement())
+  url         String
+  orden       Int       @default(0)
+  titulo      String?
+  subtitulo   String?
+  enlace      String?
+  configWebId Int
+  configWeb   ConfigWeb @relation(fields: [configWebId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Plan {
+  id              Int        @id @default(autoincrement())
+  nombre          String     @unique // Ej: "Básico", "Avanzado", "ERP"
+  descripcion     String?
+  nivel           Int        @unique // CLAVE: Aquí defines el nivel 5
+  tiendas         Tienda[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
+
+model Tienda {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  dominio     String   @unique
+  activa      Boolean  @default(true)
+  configWebId Int
+  configWeb   ConfigWeb @relation(fields: [configWebId], references: [id])
+  categorias  Categoria[]
+  carritos    Carrito[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  productos   Producto[]
+  usuarios    UsuarioTienda[]
+  ventas      Venta[]
+  proveedores ProveedorTienda[]
+
+  planId          Int?
+  plan            Plan?     @relation(fields: [planId], references: [id])
+  suscripcionInicio DateTime?
+  suscripcionFin    DateTime?
+}
+
+model Categoria {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  tiendaId    Int
+  tienda      Tienda   @relation(fields: [tiendaId], references: [id])
+  subcategorias Subcategoria[]
+  productos   Producto[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Subcategoria {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  categoriaId Int?
+  categoria   Categoria? @relation(fields: [categoriaId], references: [id])
+  productos   Producto[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Producto {
+  id             Int      @id @default(autoincrement())
+  nombre         String
+  descripcion    String?
+  precio         Decimal
+  precioOferta   Decimal?  @default(0)
+  enOferta       Boolean   @default(false)
+  esNuevo        Boolean   @default(false)
+  esDestacado    Boolean   @default(false)
+  stock          Int       @default(0)
+  stockMinimo    Int       @default(5)
+  sku            String?   @unique
+  imagenUrl      String?   @map("imagen_url")
+  categoriaId    Int?
+  categoria      Categoria? @relation(fields: [categoriaId], references: [id])
+  subcategoriaId Int?
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+  tiendaId       Int
+  tienda         Tienda   @relation(fields: [tiendaId], references: [id])
+  imagenes       ImagenProducto[]
+  movimientos    MovimientoInventario[]
+  proveedorId    Int?
+  proveedor      Proveedor? @relation(fields: [proveedorId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  carritoItem    CarritoItem[]
+  ventaItems     VentaItem[]
+  compraItem     CompraItem[]
+}
+
+model ImagenProducto {
+  id         Int      @id @default(autoincrement())
+  url        String
+  orden      Int      @default(0)
+  productoId Int
+  producto   Producto @relation(fields: [productoId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Carrito {
+  id        Int      @id @default(autoincrement())
+  cliente   String
+  telefono  String?
+  direccion String?
+  notas     String?
+  estado    String   @default("pendiente")
+  tiendaId  Int
+  tienda    Tienda   @relation(fields: [tiendaId], references: [id])
+  items     CarritoItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CarritoItem {
+  id         Int     @id @default(autoincrement())
+  cantidad   Int     @default(1)
+  productoId Int
+  producto   Producto @relation(fields: [productoId], references: [id])
+  carritoId  Int
+  carrito    Carrito  @relation(fields: [carritoId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// NUEVOS MODELOS AÑADIDOS
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  nombre    String
+  apellido  String?
+  rol       Rol      @default(USER)
+  activo    Boolean  @default(true)
+  tiendas   UsuarioTienda[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  movimientoInventario MovimientoInventario[]
+}
+
+model UsuarioTienda {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  tiendaId  Int
+  tienda    Tienda  @relation(fields: [tiendaId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([usuarioId, tiendaId])
+}
+
+enum Rol {
+  ADMIN
+  MANAGER
+  USER
+}
+
+model Venta {
+  id          Int         @id @default(autoincrement())
+  numeroVenta String      @unique
+  cliente     String
+  telefono    String?
+  direccion   String?
+  estado      EstadoVenta @default(PENDIENTE)
+  total       Decimal
+  subtotal    Decimal
+  impuestos   Decimal?
+  metodoPago  MetodoPago?
+  tiendaId    Int
+  tienda      Tienda      @relation(fields: [tiendaId], references: [id])
+  items       VentaItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  movimientoInventario MovimientoInventario[]
+}
+
+model VentaItem {
+  id         Int      @id @default(autoincrement())
+  cantidad   Int      @default(1)
+  precio     Decimal
+  productoId Int
+  producto   Producto @relation(fields: [productoId], references: [id])
+  ventaId    Int
+  venta      Venta    @relation(fields: [ventaId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+enum EstadoVenta {
+  PENDIENTE
+  CONFIRMADA
+  EN_PROCESO
+  ENVIADA
+  ENTREGADA
+  CANCELADA
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+  DIGITAL
+}
+
+model MovimientoInventario {
+  id          Int                @id @default(autoincrement())
+  tipo        TipoMovimiento
+  cantidad    Int
+  productoId  Int
+  producto    Producto           @relation(fields: [productoId], references: [id])
+  motivo      String?
+  usuarioId   Int?
+  usuario     Usuario?           @relation(fields: [usuarioId], references: [id])
+  compraId    Int?
+  compra      CompraProveedor?   @relation(fields: [compraId], references: [id])
+  ventaId     Int?
+  venta       Venta?             @relation(fields: [ventaId], references: [id])
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+   stockAnterior Int?               // ← Nuevo campo
+  stockNuevo    Int?               // ← Nuevo campo
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  AJUSTE
+}
+
+model Proveedor {
+  id          Int               @id @default(autoincrement())
+  nombre      String
+  contacto    String?
+  telefono    String?
+  email       String?
+  direccion   String?
+  ruc         String?           @unique
+  activo      Boolean           @default(true)
+  productos   Producto[]
+  compras     CompraProveedor[]
+  tiendas     ProveedorTienda[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model ProveedorTienda {
+  id          Int       @id @default(autoincrement())
+  proveedorId Int
+  proveedor   Proveedor @relation(fields: [proveedorId], references: [id])
+  tiendaId    Int
+  tienda      Tienda    @relation(fields: [tiendaId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([proveedorId, tiendaId])
+}
+
+model CompraProveedor {
+  id          Int         @id @default(autoincrement())
+  numeroCompra String     @unique
+  proveedorId Int
+  proveedor   Proveedor  @relation(fields: [proveedorId], references: [id])
+  estado      EstadoCompra @default(PENDIENTE)
+  total       Decimal
+  subtotal    Decimal
+  impuestos   Decimal?
+  fechaEntrega DateTime?
+  movimientos MovimientoInventario[]
+  items       CompraItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model CompraItem {
+  id         Int            @id @default(autoincrement())
+  cantidad   Int            @default(1)
+  precio     Decimal
+  productoId Int
+  producto   Producto       @relation(fields: [productoId], references: [id])
+  compraId   Int
+  compra     CompraProveedor @relation(fields: [compraId], references: [id])
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}
+
+enum EstadoCompra {
+  PENDIENTE
+  CONFIRMADA
+  EN_CAMINO
+  RECIBIDA
+  CANCELADA
+}
