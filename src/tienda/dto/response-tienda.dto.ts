@@ -5,6 +5,7 @@ export class TiendaResponseDto {
   nombre: string;
   descripcion?: string;
   dominio: string;
+  ciudad?: string;
   activa: boolean;
   configWebId: number;
   createdAt: Date;

@@ -1,7 +1,7 @@
 import { IsString, IsOptional, IsNumber, IsBoolean, IsDecimal, IsUrl, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 class ImagenProductoDto {
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   url: string;
 
   @IsNumber()

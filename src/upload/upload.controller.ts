@@ -8,6 +8,7 @@ import { Rol } from '../common/rol.enum';
 import * as sharp from 'sharp';
 import * as path from 'path';
 import * as fs from 'fs';
+import { randomUUID } from 'crypto';
 
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -26,12 +27,7 @@ export class UploadController {
       throw new BadRequestException('Archivo no proveído');
     }
 
-    const tId = tiendaId || 'tienda';
-    const prodName = productoNombre ? productoNombre.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'producto';
-    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const randomStr = Math.round(Math.random() * 1e9);
-    
-    const filename = `${tId}-${prodName}-${dateStr}-${randomStr}.webp`;
+    const filename = `${randomUUID()}.webp`;
     
     // Asegurar que exista la carpeta uploads en la raíz del proyecto
     const uploadsDir = path.join(process.cwd(), 'uploads');

@@ -31,6 +31,33 @@ export class ProductoService {
       throw new ForbiddenException('La tienda no tiene una suscripción activa para subir productos');
     }
 
+    const plan = await this.prisma.plan.findUnique({
+      where: { id: tienda.planId },
+    });
+
+    if (!plan) {
+      throw new ForbiddenException('El plan de la tienda no es válido');
+    }
+
+    // Verificar límite de productos
+    const currentProductsCount = await this.prisma.producto.count({
+      where: { tiendaId: tienda.id },
+    });
+
+    const limiteProductos = tienda.limiteProductosPersonalizado !== null 
+      ? tienda.limiteProductosPersonalizado 
+      : plan.limiteProductos;
+
+    if (limiteProductos !== -1 && currentProductsCount >= limiteProductos) {
+      throw new ForbiddenException(`Límite de productos alcanzado. Tu plan permite un máximo de ${limiteProductos} productos.`);
+    }
+
+    // Verificar límite de imágenes
+    const limiteImagenes = plan.limiteImagenesPorProducto;
+    if (imagenes && imagenes.length > limiteImagenes) {
+      throw new ForbiddenException(`Límite de imágenes excedido. Tu plan permite un máximo de ${limiteImagenes} imágenes por producto.`);
+    }
+
     // Verificar si la categoría existe (si se proporciona)
     if (productoData.categoriaId) {
       const categoria = await this.prisma.categoria.findUnique({
@@ -180,7 +207,12 @@ export class ProductoService {
         },
         categoria: true,
         subcategoria: true,
-        tienda: true,
+        tienda: {
+          include: {
+            plan: true,
+            configWeb: true,
+          },
+        },
         proveedor: true,
         movimientos: {
           orderBy: { createdAt: 'desc' },
@@ -238,6 +270,15 @@ export class ProductoService {
 
       // Si hay imágenes para actualizar
       if (imagenes) {
+        const tienda = await this.prisma.tienda.findUnique({
+          where: { id: existingProducto.tiendaId },
+          include: { plan: true },
+        });
+        const limiteImagenes = tienda?.plan?.limiteImagenesPorProducto || 1;
+        if (imagenes.length > limiteImagenes) {
+          throw new ForbiddenException(`Límite de imágenes excedido. Tu plan permite un máximo de ${limiteImagenes} imágenes por producto.`);
+        }
+
         // Eliminar imágenes existentes
         await this.prisma.imagenProducto.deleteMany({
           where: { productoId: id },
@@ -491,6 +532,20 @@ export class ProductoService {
 
     if (!producto) {
       throw new NotFoundException('Producto no encontrado');
+    }
+
+    const tienda = await this.prisma.tienda.findUnique({
+      where: { id: producto.tiendaId },
+      include: { plan: true },
+    });
+
+    const currentImagesCount = await this.prisma.imagenProducto.count({
+      where: { productoId: productoId },
+    });
+
+    const limiteImagenes = tienda?.plan?.limiteImagenesPorProducto || 1;
+    if (currentImagesCount >= limiteImagenes) {
+      throw new ForbiddenException(`Límite de imágenes excedido. Tu plan permite un máximo de ${limiteImagenes} imágenes por producto.`);
     }
 
     // Obtener el último orden

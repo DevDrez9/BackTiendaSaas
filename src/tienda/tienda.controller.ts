@@ -69,6 +69,16 @@ export class TiendaController {
     return this.tiendaService.update(id, { planId: body.planId } as any);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Patch('admin/:id/limit')
+  @Roles(Rol.ADMIN)
+  updateLimit(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { limiteProductosPersonalizado: number | null }
+  ): Promise<Tienda> {
+    return this.tiendaService.update(id, { limiteProductosPersonalizado: body.limiteProductosPersonalizado } as any);
+  }
+
   @UseGuards(AuthGuard('jwt'))
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number): Promise<Tienda> {

@@ -56,7 +56,11 @@ export class ProductoMapper {
       Object.assign(response, { 
         tienda: {
           id: producto.tienda.id,
-          nombre: producto.tienda.nombre
+          nombre: producto.tienda.nombre,
+          dominio: producto.tienda.dominio,
+          plan: producto.tienda.plan,
+          ciudad: producto.tienda.ciudad,
+          configWeb: producto.tienda.configWeb
         }
       });
     }

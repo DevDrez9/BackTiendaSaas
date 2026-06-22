@@ -8,6 +8,7 @@ export class TiendaMapper {
       nombre: tienda.nombre,
       descripcion: tienda.descripcion || undefined,
       dominio: tienda.dominio,
+      ciudad: tienda.ciudad || undefined,
       activa: tienda.activa,
       configWebId: tienda.configWebId,
       createdAt: tienda.createdAt,

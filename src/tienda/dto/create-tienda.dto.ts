@@ -22,10 +22,14 @@ export class CreateTiendaDto {
   @IsNotEmpty()
   @IsString()
   // Expresión regular para un subdominio/slug simple (solo letras minúsculas, números y guiones)
-  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+  @Matches(/^[a-z0-9-]+$/, {
     message: 'El dominio solo puede contener letras minúsculas, números y guiones.',
   })
   dominio: string;
+
+  @IsString()
+  @IsOptional()
+  ciudad?: string;
 
   @IsNotEmpty({ message: 'Se requiere el ID de la configuración web (configWebId).' })
   @IsInt()
@@ -40,4 +44,9 @@ export class CreateTiendaDto {
   @IsOptional()
   @IsBoolean()
   activa?: boolean = true;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  limiteProductosPersonalizado?: number;
 }

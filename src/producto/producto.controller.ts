@@ -28,9 +28,7 @@ export class ProductoController {
     return this.productosService.findAll(filterProductosDto);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get(':id')
-  @Roles(Rol.ADMIN, Rol.MANAGER, Rol.USER)
   findOne(@Param('id') id: string) {
     return this.productosService.findOne(+id);
   }
