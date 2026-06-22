@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -41,6 +42,30 @@ async function main() {
   }
 
   console.log('Planes creados/actualizados exitosamente.');
+
+  // Crear usuario admin
+  const adminEmail = 'admin@ratelapps.com';
+  const adminPassword = 'Xndre$99';
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+  const adminUser = await prisma.usuario.upsert({
+    where: { email: adminEmail },
+    update: {
+      password: hashedPassword,
+      rol: 'ADMIN',
+      nombre: 'Admin',
+      apellido: 'Ratel',
+    },
+    create: {
+      email: adminEmail,
+      password: hashedPassword,
+      nombre: 'Admin',
+      apellido: 'Ratel',
+      rol: 'ADMIN',
+    },
+  });
+
+  console.log(`Usuario admin creado/actualizado exitosamente: ${adminUser.email}`);
 }
 
 main()
