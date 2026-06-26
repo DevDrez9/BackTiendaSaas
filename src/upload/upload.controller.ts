@@ -1,4 +1,5 @@
-import { Controller, Post, UseInterceptors, UploadedFile, UseGuards, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Post, UseInterceptors, UploadedFile, UseGuards, Body, BadRequestException, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,6 +21,7 @@ export class UploadController {
   }))
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
     @Body('tiendaId') tiendaId?: string,
     @Body('productoNombre') productoNombre?: string
   ) {
@@ -41,8 +43,10 @@ export class UploadController {
       .webp({ quality: 80 })
       .toFile(filePath);
 
+    const baseUrl = process.env.APP_URL || process.env.API_URL || `${req.protocol}://${req.get('host')}`;
+
     return {
-      url: `http://localhost:3000/uploads/${filename}`
+      url: `${baseUrl}/uploads/${filename}`
     };
   }
 }
