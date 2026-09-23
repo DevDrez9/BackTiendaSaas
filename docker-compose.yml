@@ -1,79 +1,37 @@
-# Despliegue completo: base de datos + backend + frontend + respaldos automáticos.
-# Uso:  cp .env.example .env   (y completar)   ->   docker compose up -d --build
+# Producción con MySQL instalado directamente en el servidor (fuera de Docker).
+# Uso:  docker compose up -d --build
 #
-# Los datos viven en VOLÚMENES con nombre, así que NO se pierden al hacer
-# "docker compose down", reiniciar el servidor o reconstruir las imágenes.
-# (Solo se borran con "docker compose down -v": no uses -v en producción.)
+# Las imágenes viven en un VOLUMEN con nombre: no se pierden al reiniciar,
+# reconstruir o actualizar. (Solo "docker compose down -v" las borra: no lo uses.)
 
 services:
-  db:
-    image: mysql:8.4
-    restart: unless-stopped
-    # lower-case-table-names=1: las migraciones se generaron en Windows (nombres en minúscula
-    # y mayúscula mezclados). Sin esto, en Linux MySQL distingue mayúsculas y fallan.
-    # Solo tiene efecto al crear el volumen por primera vez.
-    command: ["--lower-case-table-names=1", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
-    environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   backend:
     build: .
     restart: unless-stopped
+    # Red del host: el backend ve a MySQL en 127.0.0.1 igual que cualquier programa
+    # del servidor (no hay que tocar bind-address ni usuarios de MySQL) y escucha
+    # directo en el puerto PORT del servidor, que es donde apunta cloudflared.
+    network_mode: host
     env_file: .env
     environment:
-      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
       UPLOADS_DIR: /app/uploads
       NODE_ENV: production
     volumes:
-      - uploads:/app/uploads          # imágenes persistentes
-    ports:
-      - "3000:3000"
-    depends_on:
-      db:
-        condition: service_healthy
+      - uploads:/app/uploads
 
   frontend:
-    # Ajusta la ruta si tu frontend está en otra carpeta
+    # Ajusta la ruta a la carpeta del frontend en el servidor
     build:
-      context: ../../React/mitienda
+      context: ../mitienda
       args:
         VITE_API_URL: ${APP_URL}
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-8080}:80"
     depends_on:
       - backend
 
-  # Respaldo diario de la base de datos (guarda los últimos 7 días)
-  backup-db:
-    image: fradelg/mysql-cron-backup
-    restart: unless-stopped
-    environment:
-      MYSQL_HOST: db
-      MYSQL_USER: root
-      MYSQL_PASS: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      CRON_TIME: "0 3 * * *"        # todos los días a las 03:00 (UTC)
-      MAX_BACKUPS: 7
-      GZIP_LEVEL: 9
-      INIT_BACKUP: "1"
-    volumes:
-      - ./backups/db:/backup
-    depends_on:
-      db:
-        condition: service_healthy
-
-  # Respaldo diario de las imágenes (guarda los últimos 7 días)
+  # Respaldo diario de las imágenes (guarda los últimos 7 días en ./backups/uploads)
   backup-uploads:
     image: alpine:3.20
     restart: unless-stopped
@@ -88,5 +46,5 @@ services:
       done"
 
 volumes:
-  mysql_data:
   uploads:
+    name: ${UPLOADS_VOLUME_NAME:-tienda_uploads}

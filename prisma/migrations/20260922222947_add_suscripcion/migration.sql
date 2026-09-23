@@ -1,21 +1,21 @@
 -- DropForeignKey
-ALTER TABLE `producto` DROP FOREIGN KEY `Producto_categoriaId_fkey`;
+ALTER TABLE `Producto` DROP FOREIGN KEY `Producto_categoriaId_fkey`;
 
 -- DropIndex
-DROP INDEX `Producto_categoriaId_fkey` ON `producto`;
+DROP INDEX `Producto_categoriaId_fkey` ON `Producto`;
 
 -- AlterTable
-ALTER TABLE `configweb` ADD COLUMN `whatsapp` VARCHAR(191) NULL;
+ALTER TABLE `ConfigWeb` ADD COLUMN `whatsapp` VARCHAR(191) NULL;
 
 -- AlterTable
-ALTER TABLE `movimientoinventario` ADD COLUMN `stockAnterior` INTEGER NULL,
+ALTER TABLE `MovimientoInventario` ADD COLUMN `stockAnterior` INTEGER NULL,
     ADD COLUMN `stockNuevo` INTEGER NULL;
 
 -- AlterTable
-ALTER TABLE `producto` MODIFY `categoriaId` INTEGER NULL;
+ALTER TABLE `Producto` MODIFY `categoriaId` INTEGER NULL;
 
 -- AlterTable
-ALTER TABLE `tienda` ADD COLUMN `ciudad` VARCHAR(191) NULL,
+ALTER TABLE `Tienda` ADD COLUMN `ciudad` VARCHAR(191) NULL,
     ADD COLUMN `limiteProductosPersonalizado` INTEGER NULL,
     ADD COLUMN `planId` INTEGER NULL,
     ADD COLUMN `suscripcionFin` DATETIME(3) NULL,

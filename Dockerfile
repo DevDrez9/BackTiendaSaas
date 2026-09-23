@@ -34,7 +34,7 @@ USER node
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:3000/health || exit 1
+  CMD wget -qO- "http://localhost:${PORT:-3000}/health" || exit 1
 
 # migrate deploy SOLO aplica migraciones pendientes (nunca borra datos, a diferencia de db push)
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

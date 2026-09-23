@@ -12,24 +12,7 @@ Sube a git la carpeta `prisma/migrations` nueva.
 
 ## 2. Servidor
 
-```bash
-cp .env.example .env      # completar TODAS las variables
-docker compose up -d --build
-docker compose logs -f backend
-```
-
-- `http://TU_SERVIDOR:3000/health` debe responder `{"status":"ok"}`.
-- Nunca uses `docker compose down -v`: `-v` borra la base de datos y las imágenes.
-
-### Si la base de datos ya existía y se creó con `prisma db push`
-
-`migrate deploy` falla con el error P3005 (la base no está vacía). Marca como aplicadas las migraciones que ya existen en esa base (una por una, en orden) y luego despliega:
-
-```bash
-docker compose run --rm backend npx prisma migrate resolve --applied 20250801165945_init
-# ...repite con cada carpeta de prisma/migrations que YA esté reflejada en la base...
-docker compose run --rm backend npx prisma migrate deploy
-```
+Sigue la guía paso a paso de **ACTUALIZACION.md** (MySQL en el servidor + Docker + cloudflared).
 
 ## 3. Correo (Brevo, gratis)
 
@@ -42,14 +25,9 @@ Sin `BREVO_API_KEY`, los correos no se envían: el código aparece en los logs d
 
 ## 4. Respaldos
 
-- Base de datos: `./backups/db` (diario 03:00 UTC, se guardan los últimos 7).
-- Imágenes: `./backups/uploads` (diario, se guardan los últimos 7).
-- Copia `./backups` fuera del servidor de vez en cuando (Drive, S3, tu PC).
-
-Restaurar la base:
-```bash
-gunzip < backups/db/ARCHIVO.sql.gz | docker compose exec -T db mysql -uroot -p"$MYSQL_ROOT_PASSWORD" tienda
-```
+- Base de datos: `scripts/backup-db.sh` con cron (ver ACTUALIZACION.md, paso 10). Se guardan los últimos 7 días en `backups/db`.
+- Imágenes: servicio `backup-uploads` del compose. Se guardan los últimos 7 días en `backups/uploads`.
+- Copia la carpeta `backups` fuera del servidor de vez en cuando (Drive, S3 o tu PC).
 
 ## 5. Monitoreo gratis
 
