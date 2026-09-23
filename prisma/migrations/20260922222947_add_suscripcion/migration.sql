@@ -1,8 +1,6 @@
--- DropForeignKey
-ALTER TABLE `Producto` DROP FOREIGN KEY `Producto_categoriaId_fkey`;
-
--- DropIndex
-DROP INDEX `Producto_categoriaId_fkey` ON `Producto`;
+-- DROP FOREIGN KEY AND INDEX COMMENTED OUT AS THEY DO NOT EXIST IN PROD
+-- ALTER TABLE `Producto` DROP FOREIGN KEY `Producto_categoriaId_fkey`;
+-- DROP INDEX `Producto_categoriaId_fkey` ON `Producto`;
 
 -- AlterTable
 ALTER TABLE `ConfigWeb` ADD COLUMN `whatsapp` VARCHAR(191) NULL;
