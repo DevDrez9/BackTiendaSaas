@@ -46,7 +46,9 @@ model Plan {
   nivel                     Int        @unique // CLAVE: Aquí defines el nivel
   limiteProductos           Int        @default(20)
   limiteImagenesPorProducto Int        @default(1)
+  precioMensual             Decimal    @default(0) // NUEVO: precio en BOB por mes
   tiendas                   Tienda[]
+  pagos                     PagoSuscripcion[]
   createdAt                 DateTime   @default(now())
   updatedAt                 DateTime   @updatedAt
 }
@@ -74,6 +76,7 @@ model Tienda {
   suscripcionInicio DateTime?
   suscripcionFin    DateTime?
   limiteProductosPersonalizado Int?
+  pagos           PagoSuscripcion[]
 }
 
 model Categoria {
@@ -178,6 +181,22 @@ model Usuario {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   movimientoInventario MovimientoInventario[]
+  codigosRecuperacion  CodigoRecuperacion[]
+}
+
+/// Códigos de 6 dígitos enviados por correo para recuperar la contraseña.
+/// Se guarda solo el hash (HMAC), nunca el código en texto plano.
+model CodigoRecuperacion {
+  id         Int       @id @default(autoincrement())
+  usuarioId  Int
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  codigoHash String
+  intentos   Int       @default(0)
+  expiraEn   DateTime
+  usadoEn    DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([usuarioId, createdAt])
 }
 
 model UsuarioTienda {
@@ -332,4 +351,29 @@ enum EstadoCompra {
   EN_CAMINO
   RECIBIDA
   CANCELADA
+}
+
+model PagoSuscripcion {
+  id                Int        @id @default(autoincrement())
+  tiendaId          Int
+  tienda            Tienda     @relation(fields: [tiendaId], references: [id])
+  planId            Int
+  plan              Plan       @relation(fields: [planId], references: [id])
+  meses             Int
+  monto             Decimal
+  idempotencyKey    String     @unique
+  bankQrId          String?
+  estado            EstadoPago @default(PENDIENTE)
+  qrImageBase64     String?    @db.Text
+  expiraEn          DateTime?
+  pagadoEn          DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+enum EstadoPago {
+  PENDIENTE
+  PAGADO
+  EXPIRADO
+  CANCELADO
 }

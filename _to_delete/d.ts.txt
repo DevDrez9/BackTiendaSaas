@@ -1,0 +1,11 @@
+import 'reflect-metadata';
+import { DominioService } from '../src/tienda/dominio.service';
+const existentes = ['mitienda', 'la-casa-del-pan'];
+const prisma: any = { $queryRaw: async (q: any) => { const clave = q.values[0]; return existentes.some(e => e.replace(/-/g,'') === clave) ? [{id:1}] : []; } };
+const d = new DominioService(prisma);
+(async () => {
+  for (const t of ['Mi Tiénda  Ñandú!', 'mi-tienda', 'MITIENDA', 'lacasadelpan', 'admin', 'ab', 'dashboard', 'nueva-tienda', '---x---', 'panadería josé'])
+    console.log(JSON.stringify(t), '->', JSON.stringify(await d.verificar(t)));
+  console.log('generar "Mi Tienda":', await d.generarUnico('Mi Tienda'));
+  console.log('generar "日本":', await d.generarUnico('日本'));
+})();

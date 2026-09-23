@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Rol } from 'src/common/rol.enum';
 import { CreateConfigWebDto } from './dto/create-config-web.dto';
 import { UpdateConfigWebDto } from './dto/update-config-web.dto';
 import { ConfigWebMapper } from './mappers/config-web.mapper';
@@ -27,6 +28,28 @@ export class ConfigWebService {
     });
 
     return ConfigWebMapper.toResponseDto(configWeb);
+  }
+
+  /**
+   * ADMIN y MANAGER pueden acceder a cualquier configuración.
+   * Un USER solo a la configuración de una tienda a la que pertenece.
+   */
+  async verificarAcceso(configWebId: number, user: any) {
+    const rol = String(user?.rol ?? '');
+    if (rol === Rol.ADMIN || rol === Rol.MANAGER) return;
+
+    const pertenece = await this.prisma.usuarioTienda.findFirst({
+      where: { usuarioId: user?.id, tienda: { configWebId } },
+    });
+    if (!pertenece) {
+      throw new ForbiddenException('No tienes permiso sobre esta configuración');
+    }
+  }
+
+  async verificarAccesoBanner(bannerId: number, user: any) {
+    const banner = await this.prisma.imagenBanner.findUnique({ where: { id: bannerId } });
+    if (!banner) throw new NotFoundException('Banner no encontrado');
+    await this.verificarAcceso(banner.configWebId, user);
   }
 
   async findAll() {

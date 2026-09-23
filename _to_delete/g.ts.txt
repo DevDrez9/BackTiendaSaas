@@ -1,0 +1,28 @@
+import 'reflect-metadata';
+import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
+import { SuscripcionActivaGuard } from '../src/auth/guards/suscripcion-activa.guard';
+import { SuscripcionAccesoService } from '../src/auth/suscripcion-acceso.service';
+import { SinSuscripcion } from '../src/common/decorators/sin-suscripcion.decorator';
+
+class C { libre(){} privado(){} }
+SinSuscripcion()(C.prototype, 'libre', Object.getOwnPropertyDescriptor(C.prototype,'libre')!);
+const jwt = new JwtService({ secret: 's' });
+let fin: Date|null = null; let queries=0;
+const prisma:any = { usuarioTienda: { findFirst: async () => { queries++; return fin && fin > new Date() ? { tienda: { suscripcionFin: fin } } : null; } } };
+const acceso = new SuscripcionAccesoService(prisma);
+const g = new SuscripcionActivaGuard(new Reflector(), jwt, acceso);
+const ctx = (h:string, token?:string):any => ({ getType:()=> 'http', getHandler:()=> (C.prototype as any)[h], getClass:()=>C,
+  switchToHttp:()=>({ getRequest:()=>({ headers: token?{authorization:'Bearer '+token}:{} }) }) });
+const run = async (n:string, p:Promise<any>) => { try { console.log(n, await p); } catch(e:any){ console.log(n, 'BLOQUEADO', e.response?.code); } };
+(async()=>{
+  const u = jwt.sign({ sub: 7, rol: 'USER' }), a = jwt.sign({ sub: 1, rol: 'ADMIN' });
+  await run('sin token', g.canActivate(ctx('privado')));
+  await run('token invalido', g.canActivate(ctx('privado','xxx')));
+  await run('ruta exenta, sin pago', g.canActivate(ctx('libre',u)));
+  await run('privada, sin pago', g.canActivate(ctx('privado',u)));
+  await run('admin', g.canActivate(ctx('privado',a)));
+  fin = new Date(Date.now()+86400000);
+  await run('privada, pagado', g.canActivate(ctx('privado',u)));
+  const q=queries; await g.canActivate(ctx('privado',u)); console.log('usa cache:', queries===q);
+})();

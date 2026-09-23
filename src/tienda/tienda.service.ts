@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { asegurarTiendaVigente } from 'src/common/tienda-vigente';
+import { Injectable, NotFoundException, ForbiddenException, Logger, ConflictException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { CreateTiendaDto } from './dto/create-tienda.dto';
@@ -123,6 +124,9 @@ export class TiendaService {
       if (error.code === 'P2025') { // Código de error de Prisma para "registro no encontrado"
         throw new NotFoundException(`Tienda con ID ${id} no encontrada.`);
       }
+      if (error.code === 'P2002') {
+        throw new ConflictException('Ese dominio ya está en uso');
+      }
       throw error;
     }
   }
@@ -178,6 +182,18 @@ export class TiendaService {
    * @param dominio El dominio de la tienda.
    * @returns La tienda encontrada.
    */
+  /** Catálogo público: solo tiendas con suscripción vigente. */
+  async findByDominioPublico(dominio: string): Promise<Tienda> {
+    const tienda = await this.prisma.tienda.findUnique({
+      where: { dominio },
+      include: {
+        plan: true,
+        configWeb: { include: { banners: true } },
+      },
+    });
+    return asegurarTiendaVigente(tienda);
+  }
+
   async findByDominio(dominio: string): Promise<Tienda> {
     const tienda = await this.prisma.tienda.findUnique({
       where: { dominio },

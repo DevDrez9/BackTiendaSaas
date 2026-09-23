@@ -1,0 +1,9 @@
+import 'reflect-metadata';
+import { ValidationPipe } from '@nestjs/common';
+import { FilterProductosDto } from './src/producto/dto/filter-productos.dto';
+(async()=>{
+ const p=new ValidationPipe({transform:true,whitelist:true});
+ const r=await p.transform({page:'1',limit:'10',enOferta:'true'},{type:'query',metatype:FilterProductosDto});
+ console.log(r, typeof r.page);
+ try{await p.transform({limit:'500'},{type:'query',metatype:FilterProductosDto})}catch(e:any){console.log('rechazado',e.response.message)}
+})();

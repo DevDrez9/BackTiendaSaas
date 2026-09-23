@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { ConfigWebService } from './config-web.service';
 import { CreateConfigWebDto } from './dto/create-config-web.dto';
 import { UpdateConfigWebDto } from './dto/update-config-web.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Rol } from 'src/common/rol.enum';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('config-web')
 export class ConfigWebController {
    constructor(private readonly configWebService: ConfigWebService) {}
@@ -22,14 +25,16 @@ export class ConfigWebController {
   }
 
   @Get(':id')
-  @Roles(Rol.ADMIN, Rol.MANAGER)
-  findOne(@Param('id') id: string) {
+  @Roles(Rol.ADMIN, Rol.MANAGER, Rol.USER)
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    await this.configWebService.verificarAcceso(+id, req.user);
     return this.configWebService.findOne(+id);
   }
 
   @Patch(':id')
   @Roles(Rol.ADMIN, Rol.USER)
-  update(@Param('id') id: string, @Body() updateConfigWebDto: UpdateConfigWebDto) {
+  async update(@Param('id') id: string, @Body() updateConfigWebDto: UpdateConfigWebDto, @Req() req: any) {
+    await this.configWebService.verificarAcceso(+id, req.user);
     return this.configWebService.update(+id, updateConfigWebDto);
   }
 
@@ -40,26 +45,30 @@ export class ConfigWebController {
   }
 
   @Get(':id/banners')
-  @Roles(Rol.ADMIN, Rol.MANAGER)
-  getBanners(@Param('id') id: string) {
+  @Roles(Rol.ADMIN, Rol.MANAGER, Rol.USER)
+  async getBanners(@Param('id') id: string, @Req() req: any) {
+    await this.configWebService.verificarAcceso(+id, req.user);
     return this.configWebService.getBanners(+id);
   }
 
   @Post(':id/banners')
   @Roles(Rol.ADMIN, Rol.USER)
-  addBanner(@Param('id') id: string, @Body() bannerData: any) {
+  async addBanner(@Param('id') id: string, @Body() bannerData: any, @Req() req: any) {
+    await this.configWebService.verificarAcceso(+id, req.user);
     return this.configWebService.addBanner(+id, bannerData);
   }
 
   @Patch('banners/:bannerId')
   @Roles(Rol.ADMIN, Rol.USER)
-  updateBanner(@Param('bannerId') bannerId: string, @Body() bannerData: any) {
+  async updateBanner(@Param('bannerId') bannerId: string, @Body() bannerData: any, @Req() req: any) {
+    await this.configWebService.verificarAccesoBanner(+bannerId, req.user);
     return this.configWebService.updateBanner(+bannerId, bannerData);
   }
 
   @Delete('banners/:bannerId')
   @Roles(Rol.ADMIN, Rol.USER)
-  removeBanner(@Param('bannerId') bannerId: string) {
+  async removeBanner(@Param('bannerId') bannerId: string, @Req() req: any) {
+    await this.configWebService.verificarAccesoBanner(+bannerId, req.user);
     return this.configWebService.removeBanner(+bannerId);
   }
 }

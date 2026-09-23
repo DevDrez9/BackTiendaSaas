@@ -1,3 +1,4 @@
+import { asegurarTiendaVigente } from 'src/common/tienda-vigente';
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 
 import { CreateVentaDto } from './dto/create-venta.dto';
@@ -21,9 +22,8 @@ export class VentaService {
       where: { id: tiendaId },
     });
 
-    if (!tienda) {
-      throw new NotFoundException('Tienda no encontrada');
-    }
+    // No se aceptan pedidos de tiendas sin suscripción vigente
+    asegurarTiendaVigente(tienda);
 
     // Verificar stock y que todos los productos existan
     for (const item of items) {

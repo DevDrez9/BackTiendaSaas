@@ -7,13 +7,15 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Rol } from 'src/common/rol.enum';
+import { SinSuscripcion } from 'src/common/decorators/sin-suscripcion.decorator';
 import { EstadoVenta } from 'src/common/estado-venta.enum';
-
+import { ResourceOwnershipGuard } from 'src/common/guards/resource-ownership.guard';
 
 @Controller('venta')
 export class VentaController {
   constructor(private readonly ventasService: VentaService) {}
 
+  @SinSuscripcion()
   @Post()
   create(@Body() createVentaDto: CreateVentaDto) {
     // This is now fully public so customers can place orders without an account
@@ -21,49 +23,50 @@ export class VentaController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
   @Roles(Rol.ADMIN, Rol.MANAGER)
   findAll(@Query() filterVentasDto: FilterVentasDto) {
     return this.ventasService.findAll(filterVentasDto);
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
   @Roles(Rol.ADMIN, Rol.MANAGER)
   findOne(@Param('id') id: string) {
     return this.ventasService.findOne(+id);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
   @Roles(Rol.ADMIN, Rol.MANAGER)
   update(@Param('id') id: string, @Body() updateVentaDto: UpdateVentaDto) {
     return this.ventasService.update(+id, updateVentaDto);
   }
 
   @Patch(':id/estado')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Rol.ADMIN, Rol.MANAGER)
+  @UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
+  // USER = dueño de la tienda; ResourceOwnershipGuard valida que la venta sea de SU tienda
+  @Roles(Rol.ADMIN, Rol.MANAGER, Rol.USER)
   updateEstado(@Param('id') id: string, @Body('estado') estado: EstadoVenta) {
     return this.ventasService.updateEstado(+id, estado);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
   @Roles(Rol.ADMIN, Rol.MANAGER)
   remove(@Param('id') id: string) {
     return this.ventasService.remove(+id);
   }
 
   @Get('tienda/:tiendaId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
   @Roles(Rol.ADMIN, Rol.MANAGER, Rol.USER)
   getByTienda(@Param('tiendaId') tiendaId: string, @Query() filterVentasDto: FilterVentasDto) {
     return this.ventasService.getVentasByTienda(+tiendaId, filterVentasDto);
   }
 
   @Get('estadisticas/totales')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
   @Roles(Rol.ADMIN, Rol.MANAGER)
   getEstadisticas(@Query('tiendaId') tiendaId?: string) {
     return this.ventasService.getEstadisticas(tiendaId ? +tiendaId : undefined);

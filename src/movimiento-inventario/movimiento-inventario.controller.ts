@@ -7,10 +7,11 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { MovimientoInventarioService } from './movimiento-inventario.service';
 import { Rol } from 'src/common/rol.enum';
+import { ResourceOwnershipGuard } from 'src/common/guards/resource-ownership.guard';
 
 
 @Controller('movimientos-inventario')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
 export class MovimientoInventarioController {
    constructor(private readonly movimientosService: MovimientoInventarioService) {}
 

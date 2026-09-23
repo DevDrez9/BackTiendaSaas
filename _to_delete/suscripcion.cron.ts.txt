@@ -1,0 +1,17 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { SuscripcionService } from './suscripcion.service';
+
+@Injectable()
+export class SuscripcionCron {
+  private readonly logger = new Logger(SuscripcionCron.name);
+
+  constructor(private readonly suscripcionService: SuscripcionService) {}
+
+  @Cron('*/20 * * * * *')
+  async handlePendingPaymentsSync() {
+    this.logger.debug('Iniciando sincronización de pagos QR pendientes...');
+    await this.suscripcionService.syncPendingPayments();
+    this.logger.debug('Sincronización de pagos completada.');
+  }
+}

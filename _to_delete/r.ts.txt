@@ -1,0 +1,37 @@
+import 'reflect-metadata';
+process.env.JWT_SECRET = 'x'.repeat(40);
+import { AuthService } from '../src/auth/auth.service';
+const users: any[] = [{ id: 1, email: 'a@b.com', nombre: 'Ana', activo: true, password: 'old' }];
+let codes: any[] = []; let enviado = '';
+const cr = {
+  findFirst: async ({ where, orderBy }: any) => {
+    let l = codes.filter(c => c.usuarioId === where.usuarioId);
+    if ('usadoEn' in where) l = l.filter(c => c.usadoEn === null && c.expiraEn > new Date());
+    return l.sort((a,b)=>b.createdAt-a.createdAt)[0] ?? null;
+  },
+  updateMany: async ({ where, data }: any) => { codes.filter(c=>c.usuarioId===where.usuarioId && c.usadoEn===null).forEach(c=>Object.assign(c,data)); return {}; },
+  create: async ({ data }: any) => { codes.push({ id: codes.length+1, intentos: 0, usadoEn: null, createdAt: new Date(), ...data }); return {}; },
+  update: async ({ where, data }: any) => { const c = codes.find(x=>x.id===where.id); c.intentos += 1; return c; },
+};
+const prisma: any = {
+  usuario: { findUnique: async ({ where }: any) => users.find(u => u.email === where.email) ?? null, update: async ({ data }: any) => { users[0].password = data.password; return users[0]; } },
+  codigoRecuperacion: cr,
+  $transaction: async (ops: any[]) => Promise.all(ops),
+};
+const mail: any = { enviar: async (_: string, asunto: string) => { enviado = asunto; return true; }, plantilla: (t: string, h: string) => h };
+const a = new AuthService({} as any, {} as any, prisma, {} as any, {} as any, mail);
+const t = async (n: string, p: Promise<any>) => { try { console.log(n, JSON.stringify(await p)); } catch (e: any) { console.log(n, 'ERROR:', e.message); } };
+(async () => {
+  await t('forgot inexistente', a.forgotPassword({ email: 'no@x.com' }));
+  await t('forgot ok', a.forgotPassword({ email: ' A@B.com ' }));
+  const codigo = enviado.match(/\d{6}/)![0]; console.log('codigo enviado', codigo, 'hash guardado != codigo:', codes[0].codigoHash !== codigo);
+  await t('reenviar <60s (no genera otro)', a.forgotPassword({ email: 'a@b.com' })); console.log('codigos:', codes.length);
+  await t('reset mal', a.resetPassword({ email: 'a@b.com', codigo: '000000' === codigo ? '111111' : '000000', password: 'nueva123' }));
+  await t('reset bien', a.resetPassword({ email: 'a@b.com', codigo, password: 'nueva123' }));
+  console.log('password cambiada:', users[0].password !== 'old');
+  await t('reusar codigo', a.resetPassword({ email: 'a@b.com', codigo, password: 'otra123' }));
+  codes = []; await a.forgotPassword({ email: 'a@b.com' });
+  for (let i = 0; i < 5; i++) await t('intento '+(i+1), a.resetPassword({ email: 'a@b.com', codigo: '999999', password: 'x12345' }));
+  const c2 = enviado.match(/\d{6}/)![0];
+  await t('codigo correcto tras 5 fallos', a.resetPassword({ email: 'a@b.com', codigo: c2, password: 'x12345' }));
+})();

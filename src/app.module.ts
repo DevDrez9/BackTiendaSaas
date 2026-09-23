@@ -1,3 +1,5 @@
+import { PrismaService } from './prisma.service';
+import { MailModule } from './mail/mail.module';
 import { Module } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -18,15 +20,31 @@ import { UploadModule } from './upload/upload.module';
 
 import { ScheduleModule } from '@nestjs/schedule';
 
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+
+import { SuscripcionModule } from './suscripcion/suscripcion.module';
+
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 100, // global limit: 100 requests per minute
+    }]),
     ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), 'uploads'),
+      rootPath: process.env.UPLOADS_DIR || join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
-    TiendaModule, CategoriaModule, ProductoModule, ConfigWebModule, UsuarioModule,AuthModule, ProveedorModule, VentaModule, CarritoModule, MovimientoInventarioModule, PlanModule, UploadModule],
+    TiendaModule, CategoriaModule, ProductoModule, ConfigWebModule, UsuarioModule,AuthModule, ProveedorModule, VentaModule, CarritoModule, MovimientoInventarioModule, PlanModule, UploadModule, SuscripcionModule, MailModule],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    PrismaService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
+    }
+  ],
 })
 export class AppModule {}

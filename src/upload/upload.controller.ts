@@ -17,7 +17,14 @@ export class UploadController {
   @Post('image')
   @Roles(Rol.ADMIN, Rol.MANAGER, Rol.USER)
   @UseInterceptors(FileInterceptor('file', {
-    storage: memoryStorage()
+    storage: memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 }, // máx 5 MB
+    fileFilter: (_req, file, cb) => {
+      if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(file.mimetype)) {
+        return cb(new BadRequestException('Solo se permiten imágenes JPG, PNG, WEBP, GIF o AVIF'), false);
+      }
+      cb(null, true);
+    },
   }))
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
@@ -31,17 +38,23 @@ export class UploadController {
 
     const filename = `${randomUUID()}.webp`;
     
-    // Asegurar que exista la carpeta uploads en la raíz del proyecto
-    const uploadsDir = path.join(process.cwd(), 'uploads');
+    // En Docker es un volumen persistente (UPLOADS_DIR=/app/uploads)
+    const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
     const filePath = path.join(uploadsDir, filename);
 
-    await sharp(file.buffer)
-      .webp({ quality: 80 })
-      .toFile(filePath);
+    try {
+      await sharp(file.buffer, { limitInputPixels: 40_000_000 })
+        .rotate() // respeta la orientación de fotos de celular
+        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(filePath);
+    } catch {
+      throw new BadRequestException('La imagen está dañada o no es válida');
+    }
 
     const baseUrl = process.env.APP_URL || process.env.API_URL || `${req.protocol}://${req.get('host')}`;
 

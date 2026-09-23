@@ -1,3 +1,4 @@
+import { asegurarTiendaVigente, tiendaVigenteWhere } from 'src/common/tienda-vigente';
 import { BadRequestException, ConflictException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
@@ -129,7 +130,10 @@ export class ProductoService {
     return ProductoMapper.toResponseDto(producto);
   }
 
-  async findAll(filterProductosDto: FilterProductosDto = {}) {
+  async findAll(
+    filterProductosDto: FilterProductosDto = {},
+    opciones: { soloTiendasVigentes?: boolean } = {},
+  ) {
     const {
       tiendaId,
       categoriaId,
@@ -146,6 +150,8 @@ export class ProductoService {
 
     const skip = (page - 1) * limit;
     const where: any = {};
+    // Catálogo público: nunca mostrar productos de tiendas sin suscripción vigente
+    if (opciones.soloTiendasVigentes) where.tienda = tiendaVigenteWhere();
 
     if (tiendaId) where.tiendaId = tiendaId;
     if (categoriaId) where.categoriaId = categoriaId;
@@ -155,10 +161,11 @@ export class ProductoService {
     if (esDestacado !== undefined) where.esDestacado = esDestacado;
 
     if (search) {
+      // MySQL ya compara sin distinguir mayúsculas ('mode: insensitive' solo existe en PostgreSQL)
       where.OR = [
-        { nombre: { contains: search, mode: 'insensitive' } },
-        { descripcion: { contains: search, mode: 'insensitive' } },
-        { sku: { contains: search, mode: 'insensitive' } },
+        { nombre: { contains: search } },
+        { descripcion: { contains: search } },
+        { sku: { contains: search } },
       ];
     }
 
@@ -226,6 +233,17 @@ export class ProductoService {
     }
 
     return ProductoMapper.toResponseDto(producto);
+  }
+
+  /** Detalle de producto para el catálogo público. */
+  async findOnePublico(id: number) {
+    const producto = await this.prisma.producto.findUnique({
+      where: { id },
+      select: { tienda: { select: { activa: true, planId: true, suscripcionFin: true } } },
+    });
+    if (!producto) throw new NotFoundException('Producto no encontrado');
+    asegurarTiendaVigente(producto.tienda);
+    return this.findOne(id);
   }
 
   async update(id: number, updateProductoDto: UpdateProductoDto) {
@@ -425,14 +443,12 @@ export class ProductoService {
       where: { id: tiendaId },
     });
 
-    if (!tienda) {
-      throw new NotFoundException('Tienda no encontrada');
-    }
+    asegurarTiendaVigente(tienda);
 
     return this.findAll({
       ...filterProductosDto,
       tiendaId,
-    });
+    }, { soloTiendasVigentes: true });
   }
 
   async getProductosByCategoria(categoriaId: number, filterProductosDto: FilterProductosDto = {}) {
@@ -447,7 +463,7 @@ export class ProductoService {
     return this.findAll({
       ...filterProductosDto,
       categoriaId,
-    });
+    }, { soloTiendasVigentes: true });
   }
 
   async getProductosBySubcategoria(subcategoriaId: number, filterProductosDto: FilterProductosDto = {}) {
@@ -462,7 +478,7 @@ export class ProductoService {
     return this.findAll({
       ...filterProductosDto,
       subcategoriaId,
-    });
+    }, { soloTiendasVigentes: true });
   }
 
   async getProductosDestacados(tiendaId: number, limit: number = 10) {
@@ -471,6 +487,7 @@ export class ProductoService {
         tiendaId,
         esDestacado: true,
         stock: { gt: 0 },
+        tienda: tiendaVigenteWhere(),
       },
       include: {
         imagenes: true,
@@ -491,6 +508,7 @@ export class ProductoService {
         tiendaId,
         enOferta: true,
         stock: { gt: 0 },
+        tienda: tiendaVigenteWhere(),
       },
       include: {
         imagenes: true,
@@ -511,6 +529,7 @@ export class ProductoService {
         tiendaId,
         esNuevo: true,
         stock: { gt: 0 },
+        tienda: tiendaVigenteWhere(),
       },
       include: {
         imagenes: true,

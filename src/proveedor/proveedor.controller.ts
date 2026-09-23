@@ -9,9 +9,10 @@ import { Rol } from 'src/common/rol.enum';
 import { AssignTiendaDto } from './dto/assign-tienda.dto';
 import { CreateCompraDto } from './dto/create-compra.dto';
 import { EstadoCompra } from 'src/common/estado-compra.enum';
+import { ResourceOwnershipGuard } from 'src/common/guards/resource-ownership.guard';
 
 @Controller('proveedor')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
 export class ProveedorController {
    constructor(private readonly proveedoresService: ProveedorService) {}
 

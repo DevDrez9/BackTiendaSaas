@@ -1,0 +1,92 @@
+# Despliegue completo: base de datos + backend + frontend + respaldos automáticos.
+# Uso:  cp .env.example .env   (y completar)   ->   docker compose up -d --build
+#
+# Los datos viven en VOLÚMENES con nombre, así que NO se pierden al hacer
+# "docker compose down", reiniciar el servidor o reconstruir las imágenes.
+# (Solo se borran con "docker compose down -v": no uses -v en producción.)
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    # lower-case-table-names=1: las migraciones se generaron en Windows (nombres en minúscula
+    # y mayúscula mezclados). Sin esto, en Linux MySQL distingue mayúsculas y fallan.
+    # Solo tiene efecto al crear el volumen por primera vez.
+    command: ["--lower-case-table-names=1", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
+      UPLOADS_DIR: /app/uploads
+      NODE_ENV: production
+    volumes:
+      - uploads:/app/uploads          # imágenes persistentes
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    # Ajusta la ruta si tu frontend está en otra carpeta
+    build:
+      context: ../../React/mitienda
+      args:
+        VITE_API_URL: ${APP_URL}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  # Respaldo diario de la base de datos (guarda los últimos 7 días)
+  backup-db:
+    image: fradelg/mysql-cron-backup
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: db
+      MYSQL_USER: root
+      MYSQL_PASS: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      CRON_TIME: "0 3 * * *"        # todos los días a las 03:00 (UTC)
+      MAX_BACKUPS: 7
+      GZIP_LEVEL: 9
+      INIT_BACKUP: "1"
+    volumes:
+      - ./backups/db:/backup
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Respaldo diario de las imágenes (guarda los últimos 7 días)
+  backup-uploads:
+    image: alpine:3.20
+    restart: unless-stopped
+    volumes:
+      - uploads:/uploads:ro
+      - ./backups/uploads:/backups
+    command: >
+      sh -c "while true; do
+        tar czf /backups/uploads-$$(date +%F).tar.gz -C /uploads . &&
+        find /backups -name 'uploads-*.tar.gz' -mtime +7 -delete;
+        sleep 86400;
+      done"
+
+volumes:
+  mysql_data:
+  uploads:

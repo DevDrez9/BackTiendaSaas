@@ -8,9 +8,10 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Rol } from 'src/common/rol.enum';
 import { CreateSubcategoriaDto } from './dto/create-subcategoria.dto';
 import { UpdateSubcategoriaDto } from './dto/update-subcategoria.dto';
+import { ResourceOwnershipGuard } from 'src/common/guards/resource-ownership.guard';
 
 @Controller('categoria')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, ResourceOwnershipGuard)
 export class CategoriaController {
   constructor(private readonly categoriaService: CategoriaService) {}
 
