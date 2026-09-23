@@ -13,7 +13,7 @@ RUN npm run build
 
 # ---------- Etapa 2: runtime ----------
 FROM node:20-alpine
-RUN apk add --no-cache openssl wget
+RUN apk add --no-cache openssl wget su-exec
 WORKDIR /app
 ENV NODE_ENV=production \
     UPLOADS_DIR=/app/uploads
@@ -28,8 +28,9 @@ COPY --from=build /app/package*.json ./
 RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
 VOLUME ["/app/uploads"]
 
-# No correr como root
-USER node
+# El contenedor arranca como root SOLO para arreglar el dueño del volumen de
+# imágenes (si quedó como root, la app no puede guardar: EACCES) y enseguida
+# baja a "node" con su-exec: la app nunca corre como root.
 
 EXPOSE 3000
 
@@ -37,4 +38,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD wget -qO- "http://localhost:${PORT:-3000}/health" || exit 1
 
 # migrate deploy SOLO aplica migraciones pendientes (nunca borra datos, a diferencia de db push)
+ENTRYPOINT ["sh", "-c", "chown -R node:node /app/uploads && exec su-exec node \"$@\"", "--"]
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
