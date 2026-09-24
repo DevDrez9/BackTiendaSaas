@@ -20,6 +20,7 @@ model ConfigWeb {
   colorPrimario String
   colorSecundario String
   whatsapp    String?
+  moneda      String   @default("Bs")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   tiendas     Tienda[]
@@ -105,7 +106,7 @@ model Subcategoria {
 model Producto {
   id             Int      @id @default(autoincrement())
   nombre         String
-  descripcion    String?
+  descripcion    String?  @db.Text
   precio         Decimal
   precioOferta   Decimal?  @default(0)
   enOferta       Boolean   @default(false)

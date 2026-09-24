@@ -12,6 +12,8 @@ export class ConfigWebMapper {
       logoUrl: configWeb.logoUrl || undefined,
       colorPrimario: configWeb.colorPrimario,
       colorSecundario: configWeb.colorSecundario,
+      whatsapp: configWeb.whatsapp || undefined,
+      moneda: configWeb.moneda,
       createdAt: configWeb.createdAt,
       updatedAt: configWeb.updatedAt,
     });

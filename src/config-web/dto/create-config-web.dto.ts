@@ -39,6 +39,10 @@ export class CreateConfigWebDto {
   @IsOptional()
   whatsapp?: string;
 
+  @IsString()
+  @IsOptional()
+  moneda?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BannerDto)

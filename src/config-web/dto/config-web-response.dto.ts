@@ -6,6 +6,8 @@ export class ConfigWebResponseDto {
   logoUrl?: string;
   colorPrimario: string;
   colorSecundario: string;
+  whatsapp?: string;
+  moneda?: string;
   createdAt: Date;
   updatedAt: Date;
   banners?: any[];
