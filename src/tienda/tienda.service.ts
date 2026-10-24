@@ -189,6 +189,7 @@ export class TiendaService {
       include: {
         plan: true,
         configWeb: { include: { banners: true } },
+        categorias: { select: { id: true, nombre: true } },
       },
     });
     return asegurarTiendaVigente(tienda);
@@ -204,6 +205,7 @@ export class TiendaService {
             banners: true
           }
         },
+        categorias: { select: { id: true, nombre: true } },
       },
     });
 
