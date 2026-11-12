@@ -88,18 +88,24 @@ export class TiendaController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Patch('admin/:id/plan')
   @Roles(Rol.ADMIN)
-  updatePlan(
+  async updatePlan(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { planId: number | null, meses?: number }
   ): Promise<Tienda> {
     // El acceso de los dueños cambia al instante (sin esperar el cache de 60s)
     this.suscripcionAcceso.invalidar();
     if (body.planId !== null) {
-      // Asignar plan sin meses dejaba la tienda sin fecha de vencimiento (= bloqueada)
-      if (!body.meses || body.meses < 1) {
-        throw new BadRequestException('Indica la cantidad de meses del plan');
+      if (body.meses && body.meses >= 1) {
+        return this.tiendaService.renewSubscription(id, body.planId, body.meses);
       }
-      return this.tiendaService.renewSubscription(id, body.planId, body.meses);
+      // Si no se indicaron meses, verificamos si ya cuenta con suscripción vigente
+      const tienda = await this.tiendaService.findOne(id);
+      const now = new Date();
+      if (tienda.suscripcionFin && new Date(tienda.suscripcionFin) > now) {
+        return this.tiendaService.update(id, { planId: body.planId, activa: true } as any);
+      }
+      // Si no tenía suscripción o ya estaba vencida, se activa con 1 mes por defecto
+      return this.tiendaService.renewSubscription(id, body.planId, 1);
     }
     return this.tiendaService.update(id, { planId: null, suscripcionFin: null } as any);
   }

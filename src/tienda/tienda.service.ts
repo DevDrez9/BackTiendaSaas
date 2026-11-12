@@ -140,10 +140,9 @@ export class TiendaService {
     // Si ya tiene una suscripción activa, sumamos los meses a la fecha de fin actual
     // Si no, iniciamos desde hoy
     const now = new Date();
-    let fechaInicio = tienda.suscripcionInicio || now;
-    let fechaFin = tienda.suscripcionFin && tienda.suscripcionFin > now 
-      ? new Date(tienda.suscripcionFin) 
-      : now;
+    const isVigente = tienda.suscripcionFin && new Date(tienda.suscripcionFin) > now;
+    const fechaInicio = isVigente && tienda.suscripcionInicio ? tienda.suscripcionInicio : now;
+    const fechaFin = isVigente ? new Date(tienda.suscripcionFin!) : new Date(now);
 
     fechaFin.setMonth(fechaFin.getMonth() + meses);
 
